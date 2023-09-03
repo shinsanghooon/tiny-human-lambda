@@ -31,6 +31,9 @@ def lambda_handler(event, context):
     # get source S3 bucket and path
     source_bucket = event['Records'][0]['s3']['bucket']['name']
     key = event['Records'][0]['s3']['object']['key']
+    key_split = key.split('.')
+    extension = key_split[-1]
+    
     
     logger.info(f'Read source image - {source_bucket}/{key}')
     
@@ -39,7 +42,7 @@ def lambda_handler(event, context):
     os.makedirs(temp_dir, exist_ok=True)
     
     # download image from source bucket
-    source_image_path = os.path.join(temp_dir, 'source_image.jpg')
+    source_image_path = os.path.join(temp_dir, f'source_image.{extension}')
     s3.download_file(source_bucket, key, source_image_path)
     
     image = Image.open(source_image_path)
@@ -66,7 +69,7 @@ def lambda_handler(event, context):
         target_key = f'{file_name}_{size}{file_extension}'
         
         # temp_file_path
-        target_image_path = os.path.join(temp_dir, 'target_image.jpg')
+        target_image_path = os.path.join(temp_dir, f'target_image.{extension}')
         
         # temp resized file save
         cropped_resized.save(target_image_path, quality=100)
