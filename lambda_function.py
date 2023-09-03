@@ -91,48 +91,56 @@ def lambda_handler(event, context):
     key_split = key.split('/')
     if(key_split[0] == 'baby'):
         baby_id = key_split[1]
+    logger.info('Extract baby id from key')    
 
     exif_info = image._getexif()
-
-    exif = {}
-    for tag, value in exif_info.items():
-        if (tag not in ['MakerNote', 'PrintImageMatching']):
-            decoded = TAGS.get(tag, tag)
-            exif[decoded] = value
-
-    del exif['MakerNote']
-    del exif['PrintImageMatching']
-
+    if (exif_info is None):
+        item = {
+                'baby_id': {'S': str(baby_id)},  
+                'key_name': {'S': key},
+                'original_created_at': {'S': str(None)}, 
+                'gps_latitude': {'S': str(None)} ,
+                'gps_longitude': {'S': str(None)},
+                'gps_info': {'S': str(None)}
+            }    
+    else:    
+        exif = {}
+        for tag, value in exif_info.items():
+            if (tag not in ['MakerNote', 'PrintImageMatching']):
+                decoded = TAGS.get(tag, tag)
+                exif[decoded] = value
     
-    original_datetime = None 
-    if 'DateTime' in exif.keys():
-        original_datetime = exif['DateTime']
-
-    gps = {}
-    gps_latitude = None 
-    gps_longitude = None 
-    if 'GPSInfo' in exif.keys():
-        logger.info("GPS Info exists")
-        for key in exif['GPSInfo'].keys():
-            decode = GPSTAGS.get(key,key)
-            gps[decode] = exif['GPSInfo'][key]
-
-        gps_latitude = dms_to_decimal(gps["GPSLatitude"], gps["GPSLatitudeRef"])
-        gps_longitude = dms_to_decimal(gps["GPSLongitude"], gps["GPSLongitudeRef"]) 
-    else: 
-        logger.info("GPS Info doesn't exist")
+        del exif['MakerNote']
+        del exif['PrintImageMatching']
+        
+        original_datetime = None 
+        if 'DateTime' in exif.keys():
+            original_datetime = exif['DateTime']
+    
+        gps = {}
+        gps_latitude = None 
+        gps_longitude = None 
+        if 'GPSInfo' in exif.keys():
+            logger.info("GPS Info exists")
+            for key in exif['GPSInfo'].keys():
+                decode = GPSTAGS.get(key,key)
+                gps[decode] = exif['GPSInfo'][key]
+    
+            gps_latitude = dms_to_decimal(gps["GPSLatitude"], gps["GPSLatitudeRef"])
+            gps_longitude = dms_to_decimal(gps["GPSLongitude"], gps["GPSLongitudeRef"]) 
+        else: 
+            logger.info("GPS Info doesn't exist")
+            
+        item = {
+                'baby_id': {'S': str(baby_id)},  
+                'key_name': {'S': key},
+                'original_created_at': {'S': str(original_datetime)}, 
+                'gps_latitude': {'S': str(gps_latitude)} ,
+                'gps_longitude': {'S': str(gps_longitude)},
+                'gps_info': {'S': str(gps)}
+            }    
 
     dynamodb = boto3.client("dynamodb")
-
-    item = {
-            'baby_id': {'S': str(baby_id)},  
-            'key_name': {'S': key},
-            'original_created_at': {'S': str(original_datetime)}, 
-            'gps_latitude': {'S': str(gps_latitude)} ,
-            'gps_longitude': {'S': str(gps_longitude)},
-            'gps_info': {'S': str(gps)}
-        }
-
     table_name = 'image_exif_info_dev' 
 
     logger.info(f'Start - put data to dynamoDB({table_name})')
