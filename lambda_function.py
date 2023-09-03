@@ -109,9 +109,6 @@ def lambda_handler(event, context):
             if (tag not in ['MakerNote', 'PrintImageMatching']):
                 decoded = TAGS.get(tag, tag)
                 exif[decoded] = value
-    
-        del exif['MakerNote']
-        del exif['PrintImageMatching']
         
         original_datetime = None 
         if 'DateTime' in exif.keys():
