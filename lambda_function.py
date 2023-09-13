@@ -21,8 +21,12 @@ def lambda_handler(event, context):
     keyname = unquote_plus(event['Records'][0]['s3']['object']['key'])
     key_split = keyname.split('.')
     extension = key_split[-1]
+    
+    response = s3.head_object(Bucket='tiny-human-dev', Key=keyname)
+    content_type = response['ContentType']
+    logger.info(f'\tContent type - {content_type}')
 
-    logger.info(f'\tRead source image - {source_bucket}/{keyname}')
+    logger.info(f'\tRead source file - {source_bucket}/{keyname}')
     
     # create tmp directory for lambda 
     temp_dir = '/tmp'
@@ -32,8 +36,20 @@ def lambda_handler(event, context):
     source_image_path = os.path.join(temp_dir, f'source_image.{extension}')
     s3.download_file(source_bucket, keyname, source_image_path)
     
-    image = Image.open(source_image_path)
     
+    tmp_thumbnail = '/tmp/video_thumnail.jpg'
+    
+    if(content_type.startswith('image')):
+        image = Image.open(source_image_path)    
+    elif(content_type.startswith('video')):
+        cap = cv2.VideoCapture(source_image_path)
+        ret, frame= cap.read()
+        cv2.imwrite(tmp_thumbnail, frame)
+        image = Image.open(tmp_thumbnail)
+    else:
+        raise Exception("지원되지 않는 파일 형식입니다.")
+    
+
     # crop and resize 
     minLength = min(image.height, image.width)
     xOffset = (image.width - minLength) / 2.0
@@ -71,6 +87,10 @@ def lambda_handler(event, context):
     # clear tmp directory and file
     logger.info(f'\tRemove tmp source image')
     os.remove(source_image_path)
+    
+    if(content_type=='video'):
+        logger.info(f'\tRemove tmp thumbnail image')
+        os.remove(tmp_thumbnail)
     
     logger.info('Finish to extract thumbnail')
 
