@@ -4,7 +4,7 @@ import boto3
 import os
 from urllib.parse import unquote_plus
 import logging
-
+import cv2
 
 def lambda_handler(event, context):
     
