@@ -1,0 +1,8 @@
+export ACCOUNT_ID=$(aws sts get-caller-identity --output text --query Account)
+echo "export ACCOUNT_ID=${ACCOUNT_ID}" | tee -a ~/.zshrc
+
+docker tag thumbnail-lambda $ACCOUNT_ID.dkr.ecr.ap-northeast-2.amazonaws.com/thumbnail-lambda
+
+aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.ap-northeast-2.amazonaws.com
+
+docker push $ACCOUNT_ID.dkr.ecr.ap-northeast-2.amazonaws.com/thumbnail-lambda
